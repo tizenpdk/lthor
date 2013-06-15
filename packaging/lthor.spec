@@ -12,7 +12,7 @@ Source0:       %{name}_%{version}.tar.gz
 
 BuildRequires:  libarchive-devel
 BuildRequires:  cmake
-BuildRequires:  pkg-config
+BuildRequires:  pkgconfig
 
 Requires: udev
 
