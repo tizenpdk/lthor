@@ -102,7 +102,7 @@ static void tar_release(struct thor_data_src *src)
 	}
 	free(tardata->entries);
 	archive_read_close(tardata->ar);
-	archive_read_finish(tardata->ar);
+	archive_read_free(tardata->ar);
 	archive_entry_free(tardata->ae);
 	free(tardata);
 }
@@ -123,8 +123,8 @@ static int tar_prep_read(const char *path, struct archive **archive,
 		goto read_finish;
 
 	archive_read_support_format_tar(ar);
-	archive_read_support_compression_gzip(ar);
-	archive_read_support_compression_bzip2(ar);
+	archive_read_support_filter_gzip(ar);
+	archive_read_support_filter_bzip2(ar);
 
 	if (!strcmp(path, "-"))
 		ret = archive_read_open_FILE(ar, stdin);
@@ -140,7 +140,7 @@ static int tar_prep_read(const char *path, struct archive **archive,
 cleanup:
 	archive_entry_free(ae);
 read_finish:
-	archive_read_finish(ar);
+	archive_read_free(ar);
 	return ret;
 }
 
@@ -216,7 +216,7 @@ cleanup:
 		}
 	}
 	archive_read_close(ar);
-	archive_read_finish(ar);
+	archive_read_free(ar);
 	archive_entry_free(ae);
 out:
 	return ret;
