@@ -65,24 +65,30 @@ typedef void (*thor_next_entry_cb)(thor_device_handle *th,
 				 struct thor_data_src *data,
 				 void *user_data);
 
-/* Init the Thor library */
-int thor_init();
+struct thor_backend_ops {
+	int (*open)(struct thor_device_id *dev_id, int wait,
+				thor_device_handle *th);
+	void (*close)(thor_device_handle *th);
+	int (*send)(thor_device_handle *th, unsigned char *buf,
+				off_t count, int timeout);
+	int (*recv)(thor_device_handle *th, unsigned char *buf,
+				off_t count, int timeout);
+	int (*send_data)(thor_device_handle *th,
+			struct thor_data_src *data,
+			off_t trans_unit_size,
+			thor_progress_cb report_progress,
+			void *user_data);
+};
 
-/* Cleanup the thor library */
-void thor_cleanup();
-
-/* Check if device is thor compatible */
-int thor_check_proto(struct thor_device_id *dev_id);
-
-/* Open the device and prepare it for thor communication */
-int thor_open(struct thor_device_id *dev_id, int wait,
-	      thor_device_handle **handle);
-
-/* Close the device */
+/* Open/Close the thor frontend */
+int thor_open(struct thor_device_id *dev_id, int wait, thor_device_handle *th);
 void thor_close(thor_device_handle *th);
 
 /* Start thor "session" */
 int thor_start_session(thor_device_handle *th, off_t total);
+
+/* End the session */
+int thor_end_session(thor_device_handle *th);
 
 /* Send a butch of data to the target */
 int thor_send_data(thor_device_handle *th, struct thor_data_src *data,
@@ -90,8 +96,8 @@ int thor_send_data(thor_device_handle *th, struct thor_data_src *data,
 		   void *user_data, thor_next_entry_cb report_next_entry,
 		   void *ne_cb_data);
 
-/* End the session */
-int thor_end_session(thor_device_handle *th);
+/* Request target reboot */
+int thor_reboot(thor_device_handle *th);
 
 /* Open a standard file or archive as data source for thor */
 int thor_get_data_src(const char *path, enum thor_data_src_format format,
@@ -99,9 +105,6 @@ int thor_get_data_src(const char *path, enum thor_data_src_format format,
 
 /* Release data source */
 void thor_release_data_src(struct thor_data_src *data);
-
-/* Request target reboot */
-int thor_reboot(thor_device_handle *th);
 
 #endif /* THOR_H__ */
 

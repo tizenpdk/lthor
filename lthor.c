@@ -26,6 +26,8 @@
 #include <sys/time.h>
 
 #include "thor.h"
+#include "thor_frontend.h"
+#include "thor_internal.h"
 
 #define KB			(1024)
 #define MB			(1024*KB)
@@ -73,17 +75,16 @@ error:
 	return ret;
 }
 
-/* Check if LHOR protocol is in working state */
-static int check_proto(struct thor_device_id *dev_id)
+/* Check if THOR protocol is in working state */
+static int check_proto(struct thor_device_id *dev_id, thor_device_handle *th)
 {
-	thor_device_handle *handle;
 	int ret;
 
-	ret = thor_open(dev_id, 0, &handle);
+	ret = thor_open(dev_id, 0, th);
 	if (ret)
 		fprintf(stderr, "Unable to open device: %d\n", ret);
 	else
-		thor_close(handle);
+		thor_close(th);
 
 	return ret;
 }
@@ -260,9 +261,8 @@ out:
 }
 
 static int process_download(struct thor_device_id *dev_id, const char *pitfile,
-		     char **tarfilelist)
+				char **tarfilelist, thor_device_handle *th)
 {
-	thor_device_handle *th;
 	off_t total_size = 0;
 	struct helper *data_parts;
 	int nfiles;
@@ -270,7 +270,7 @@ static int process_download(struct thor_device_id *dev_id, const char *pitfile,
 	int i;
 	int ret;
 
-	ret = thor_open(dev_id, 1, &th);
+	ret = thor_open(dev_id, 1, th);
 	if (ret) {
 		fprintf(stderr, "Unable to open device: %d\n", ret);
 		return ret;
@@ -374,6 +374,7 @@ static void d_opt_obsolete()
 
 int main(int argc, char **argv)
 {
+	thor_device_handle *th;
 	const char *exename = NULL, *pitfile = NULL;
 	int opt;
 	int opt_test = 0;
@@ -408,12 +409,6 @@ int main(int argc, char **argv)
 	       "         Krzysztof Opasiak <k.opasiak@samsung.com>\n\n");
 
 	exename = argv[0];
-
-	ret = thor_init();
-	if (ret) {
-		fprintf(stderr, "Unable to init io backend: %d\n", ret);
-		exit(-1);
-	}
 
 	while (1) {
 		opt = getopt_long(argc, argv, "tvcd:p:b:", opts, &optindex);
@@ -495,17 +490,22 @@ int main(int argc, char **argv)
 		}
 	}
 
-	ret = 0;
+	ret = thor_usb_init(&th);
+	if (ret) {
+		fprintf(stderr, "Unable to init io backend: %d\n", ret);
+		exit(-1);
+	}
+
 	if (opt_test)
 		ret = test_tar_file_list(&(argv[optind]));
 	else if (opt_check)
-		ret = check_proto(&dev_id);
+		ret = check_proto(&dev_id, th);
 	else if (pitfile || argv[optind])
-		ret = process_download(&dev_id, pitfile, &(argv[optind]));
+		ret = process_download(&dev_id, pitfile, &(argv[optind]), th);
 	else
 		usage(exename);
 
-	thor_cleanup();
+	thor_usb_cleanup(th);
 	return ret;
 }
 
