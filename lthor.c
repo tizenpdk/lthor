@@ -26,8 +26,8 @@
 #include <sys/time.h>
 
 #include "thor.h"
-#include "thor_frontend.h"
 #include "thor_internal.h"
+#include "thor_backend.h"
 
 #define KB			(1024)
 #define MB			(1024*KB)
@@ -345,11 +345,12 @@ close_dev:
 static void usage(const char *exename)
 {
 	fprintf(stderr,
-		"Usage: %s: [options] [-d port] [-p pitfile] [tar] [tar] ..\n"
+		"Usage: %s: [options] [-n ip:port] [-d port] [-p pitfile] [tar] [tar] ..\n"
 		"Options:\n"
 		"  -t, --test                         Don't flash, just check if given tar files are correct\n"
 		"  -v, --verbose                      Be more verbose\n"
 		"  -c, --check                        Don't flash, just check if given tty port is thor capable\n"
+		"  -n <ip:port>, --net=<ip:port>      Flash device through network connection mode with given IP\n"
 		"  -p <pitfile>, --pitfile=<pitfile>  Flash new partition table\n"
 		"  -b <busid>, --busid=<busid>        Flash device with given busid\n"
 		"  --vendor-id=<vid>                  Flash device with given Vendor ID\n"
@@ -372,6 +373,39 @@ static void d_opt_obsolete()
 	exit(1);
 }
 
+static thor_device_handle *thor_init(enum thor_backend_mode mode)
+{
+	thor_device_handle *th = NULL;
+	int ret;
+
+	switch (mode) {
+	case THOR_BACKEND_USB:
+		ret = thor_usb_init(&th);
+		if (ret)
+			return NULL;
+		break;
+	case THOR_BACKEND_NET:
+		ret = thor_net_init(&th);
+		if (ret)
+			return NULL;
+		break;
+	}
+
+	return th;
+}
+
+static void thor_cleanup(thor_device_handle *th, enum thor_backend_mode mode)
+{
+	switch (mode) {
+	case THOR_BACKEND_USB:
+		thor_usb_cleanup(th);
+		break;
+	case THOR_BACKEND_NET:
+		thor_net_cleanup(th);
+		break;
+	}
+}
+
 int main(int argc, char **argv)
 {
 	thor_device_handle *th;
@@ -381,12 +415,15 @@ int main(int argc, char **argv)
 	int opt_check = 0;
 	int opt_verbose = 0; /* unused for now */
 	int optindex;
+	enum thor_backend_mode mode = THOR_BACKEND_USB; /* default is USB */
 	int ret;
 	struct thor_device_id dev_id = {
 		.busid = NULL,
 		.vid = -1,
 		.pid = -1,
 		.serial = NULL,
+		.ip_addr = NULL,
+		.port = 0,
 	};
 
 	struct option opts[] = {
@@ -395,6 +432,7 @@ int main(int argc, char **argv)
 		{"check", no_argument, 0, 'c'},
 		{"port", required_argument, 0, 'd'},
 		{"pitfile", required_argument, 0, 'p'},
+		{"net", required_argument, 0, 'n'},
 		{"busid", required_argument, 0, 'b'},
 		{"vendor-id", required_argument, 0, 1},
 		{"product-id", required_argument, 0, 2},
@@ -431,6 +469,18 @@ int main(int argc, char **argv)
 		case 'p':
 			pitfile = optarg;
 			break;
+		case 'n':
+		{
+			unsigned long int val;
+
+			dev_id.ip_addr = strsep(&optarg, ":");
+
+			val = strtoul(optarg, NULL, 0);
+			dev_id.port = (int)val;
+
+			mode = THOR_BACKEND_NET;
+			break;
+		}
 		case 'b':
 			dev_id.busid = optarg;
 			break;
@@ -490,9 +540,9 @@ int main(int argc, char **argv)
 		}
 	}
 
-	ret = thor_usb_init(&th);
-	if (ret) {
-		fprintf(stderr, "Unable to init io backend: %d\n", ret);
+	th = thor_init(mode);
+	if (!th) {
+		fprintf(stderr, "Unable to init io backend\n");
 		exit(-1);
 	}
 
@@ -505,7 +555,8 @@ int main(int argc, char **argv)
 	else
 		usage(exename);
 
-	thor_usb_cleanup(th);
+	thor_cleanup(th, mode);
+
 	return ret;
 }
 

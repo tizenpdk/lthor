@@ -26,6 +26,8 @@ struct thor_device_id {
 	int vid;
 	int pid;
 	const char *serial;
+	const char *ip_addr;
+	int port;
 };
 
 struct thor_device_handle;

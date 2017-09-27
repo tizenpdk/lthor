@@ -8,6 +8,7 @@ SET(LIBTHOR_SRCS
 	libthor/thor_tar.c
 	libthor/thor_backend.c
 	libthor/thor_usb.c
+	libthor/thor_net.c
 )
 
 SET(SRCS

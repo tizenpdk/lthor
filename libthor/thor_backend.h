@@ -4,6 +4,11 @@
 #include "thor.h"
 #include "thor_internal.h"
 
+enum thor_backend_mode {
+	THOR_BACKEND_USB,
+	THOR_BACKEND_NET,
+};
+
 int thor_exec_cmd_full(thor_device_handle *th,  request_type req_id,
 				int req_sub_id, int *idata, int icnt,
 				char **sdata, int scnt, struct res_pkt *res);
@@ -25,5 +30,8 @@ void thor_close(thor_device_handle *th);
 
 int thor_usb_init(thor_device_handle **handle);
 void thor_usb_cleanup(thor_device_handle *th);
+
+int thor_net_init(thor_device_handle **handle);
+void thor_net_cleanup(thor_device_handle *th);
 
 #endif /* THOR_FRONTEND_H__ */
